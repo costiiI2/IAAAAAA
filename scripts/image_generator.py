@@ -1,42 +1,30 @@
 import numpy as np
 import cv2
 
-X = 10
-gap = 30  # Fixed gap between the lines
+X = 100
+
 
 def generate_image():
-        image = np.zeros((200, 200), dtype=np.uint8)
-        
-        # Randomly generate the starting point at the bottom for the first line
-        x1 = np.random.randint(0, 200)
-        y1 = 200
-        
-        # Randomly generate the second point above the first point for the first line
-        x2 = np.random.randint(0, 200)
-        y2 = np.random.randint(0, y1)  
-        
-        # Randomly generate the third point above the second point but not in the same direction for the first line
-        x3 = np.random.randint(0, 200)
-        y3 = np.random.randint(0, y2)
-        
-        # Draw the first line
-        cv2.line(image, (x1, y1), (x2, y2), 255, 1)
-        cv2.line(image, (x2, y2), (x3, y3), 255, 1)
-        
-        # the starting point of the second line is offset by the gap
-        x1 += gap
-        #the second point is offset by the gap and adjusted depending on the side of the first line
-        x2 += gap
-        y2 = y1 - y2
-        #the third point is offset by the gap and adjusted depending on the side of the second line
-        x3 += gap
-        y3 = y2 - y3
-        # Draw the second line
-        cv2.line(image, (x1, y1), (x2, y2), 255, 1)
-        cv2.line(image, (x2, y2), (x3, y3), 255, 1)
+    image = np.zeros((200, 200), dtype=np.uint8)
     
-        return image
+    # Generate random points for the line
+    x1 = np.random.randint(0, 200)
+    y1 = 200
+    x2 = np.random.randint(0, 200)
+    y2 = 0
+    
+    # Calculate midpoint
+    mx = (x1 + x2) // 2
+    my = np.random.randint(100, 200)  # Ensure midpoint is above both ends
+    
+    # Draw the line in two segments
+    cv2.line(image, (x1, y1), (mx, my), 255, 10)
+    cv2.line(image, (mx, my), (x2, y2), 255, 10)
 
+    return image
+
+# Generate and save 10 images
 for i in range(X):
     image = generate_image()
     cv2.imwrite(f"images/{i}.png", image)
+
