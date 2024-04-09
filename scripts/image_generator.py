@@ -2,7 +2,8 @@ import numpy as np
 import cv2
 import json
 
-X = 100
+X = 1000
+N = 100
 points_data = []
 
 # Generate and save 10 images
@@ -28,12 +29,16 @@ for i in range(X):
     # Draw the line in two segments
     cv2.line(image, (x1, y1), (mx, my), 255, 10)
     cv2.line(image, (mx, my), (x2, y2), 255, 10)
+
+    #sobel the img
     
-    # Save the first two points of the line in a list
-    points_data.append({"image_id": i, "points (bottom,middle)": [(x1, 0), (mx, 200-my)]})
     
     # Save the image
-    cv2.imwrite(f"images/{i}.png", image)
+    if(i < N):
+        cv2.imwrite(f"test_img/{i}__{x1}_0.png", image)
+    else:
+        points_data.append({"image_id": i, "points": [(x1, 0), (mx, 200-my)]})
+        cv2.imwrite(f"images/{i}.png", image)
 
 # Save the points data in a JSON file
 with open("points_data.json", "w") as f:
