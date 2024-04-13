@@ -1,1 +1,3 @@
 *.DS_Store
+/scripts/images
+/scripts/test_img
