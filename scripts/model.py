@@ -38,7 +38,7 @@ print("Mean Squared Error:", mse)
 # Load  new images from disk
 import glob
 
-for i in range(10):
+for i in range(100):
     filenames = glob.glob(f"test_img/{i}__*.png")
     for filename in filenames:
         new_image = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
@@ -51,10 +51,7 @@ for i in range(10):
         predicted_point = model.predict([new_image_flattened])[0]
         print(f"Predicted Point for image {filename}:", predicted_point)
 
-new_image = cv2.imread("test_img/ss.png", cv2.IMREAD_GRAYSCALE)
-new_image_flattened = new_image.flatten()
-predicted_point = model.predict([new_image_flattened])[0]
-print(f"Predicted Point for image test_img/0__10_0.png:", predicted_point)
+
 
 
 

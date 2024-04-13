@@ -60,16 +60,15 @@ def sobel_filter(img_path):
     
     return sobel_magnitude_image
 
-
 # Generate and save 10 images
 for i in range(X):
-    image = np.zeros((200, 200), dtype=np.uint8)
+    original_image = np.zeros((200, 200), dtype=np.uint8)
     
     # Generate random points for the line
-    #bottom point
+    # bottom point
     x1 = np.random.randint(10, 190)
     y1 = 200 
-    #top point
+    # top point
     x2 = np.random.randint(10, 190)
     y2 = 0
     
@@ -82,19 +81,22 @@ for i in range(X):
     my = np.random.randint(50, 150)  # Ensure midpoint is above both ends
     
     # Draw the line in two segments
-    cv2.line(image, (x1, y1), (mx, my), 255, 10)
-    cv2.line(image, (mx, my), (x2, y2), 255, 10)
+    cv2.line(original_image, (x1, y1), (mx, my), 255, 10)
+    cv2.line(original_image, (mx, my), (x2, y2), 255, 10)
 
-    #sobel the img
-    cv2.imwrite(f"images/{i}.png", image)
-    image = sobel_filter(f"images/{i}.png")
+    # Save the original image
+    cv2.imwrite(f"images/og.png", original_image)
     
-    # Save the image
-    if(i < N):
-        cv2.imwrite(f"test_img/{i}__{x1}_0.png", image)
+  # Apply Sobel filter to the original image
+    sobel_image = np.array(sobel_filter(f"images/og.png"))
+
+    # Save the filtered image
+    if i < N:
+        cv2.imwrite(f"test_img/{i}__{x1}_0.png", sobel_image)
     else:
         points_data.append({"image_id": i, "points": [(x1, 0), (mx, 200-my)]})
-        cv2.imwrite(f"images/{i}.png", image)
+        cv2.imwrite(f"images/{i}.png", sobel_image.astype(np.uint8))  # Ensure the data type is uint8
+
 
 # Save the points data in a JSON file
 with open("points_data.json", "w") as f:
