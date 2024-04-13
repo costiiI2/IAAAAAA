@@ -4,6 +4,7 @@ import json
 
 X = 1000
 N = 100
+Y_HEIGHT = 50
 points_data = []
 
 import torch
@@ -92,7 +93,9 @@ for i in range(X):
 
     # Save the filtered image
     if i < N:
-        cv2.imwrite(f"test_img/{i}__{x1}_0.png", sobel_image)
+        #find a point on the line a Y = Y_HEIGHT
+        x3 = int((x1 + mx) / 2)
+        cv2.imwrite(f"test_img/{i}__{x1}_0_{x3}_{Y_HEIGHT}.png", sobel_image.astype(np.uint8))
     else:
         points_data.append({"image_id": i, "points": [(x1, 0), (mx, 200-my)]})
         cv2.imwrite(f"images/{i}.png", sobel_image.astype(np.uint8))  # Ensure the data type is uint8

@@ -9,6 +9,7 @@ from sklearn.metrics import mean_squared_error
 with open("points_data.json", "r") as f:
     points_data = json.load(f)
 
+## Y=0
 # Prepare the dataset
 X = []  # Features (images)
 y = []  # Target (x1, y1) points
@@ -33,12 +34,13 @@ y_pred = model.predict(X_val)
 mse = mean_squared_error(y_val, y_pred)
 print("Mean Squared Error:", mse)
 
+
 # Now you can use this trained model to predict the (x1, y1) point from new images
 # For example:
 # Load  new images from disk
 import glob
 
-for i in range(100):
+for i in range(10):
     filenames = glob.glob(f"test_img/{i}__*.png")
     for filename in filenames:
         new_image = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
