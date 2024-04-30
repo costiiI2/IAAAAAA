@@ -1,0 +1,1 @@
+cmd_/home/bitcraze/projects/LAB_IAA/code/stm32/built-in.o :=  arm-none-eabi-gcc --specs=nosys.specs --specs=nano.specs -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16   -r -o /home/bitcraze/projects/LAB_IAA/code/stm32/built-in.o /home/bitcraze/projects/LAB_IAA/code/stm32/src/built-in.o

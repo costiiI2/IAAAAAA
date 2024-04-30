@@ -21,6 +21,7 @@ static struct pi_device camera;
 unsigned char *imgBuff;
 static pi_buffer_t buffer;
 static SemaphoreHandle_t capture_sem = NULL;
+static pi_task_t task1;
 
 void start(void)
 {
@@ -55,6 +56,9 @@ void start(void)
 
     capture_sem = xSemaphoreCreateBinary();
 
+    uint32_t fcFreq = pi_freq_get(PI_FREQ_DOMAIN_FC);
+    printf("FC Frequency: %d\n", fcFreq);
+
     while (1)
     {
         sendToSTM32();
@@ -74,7 +78,7 @@ void sendToSTM32(void)
 
     CPXPacket_t packet;
     // packet source , packet destination, function, route
-    cpxInitRoutePacket(&packet, CPX_ROUTES_UART_TO_STM32, APP, &packet.route);
+    cpxInitRoute(CPX_T_GAP8, CPX_T_ESP32, CPX_F_APP, &packet.route);
 
     // copy data to packet
     //  TODO: CHECK EXAMPLE stm_gap8_cpx.c to add uart data collection
@@ -95,7 +99,7 @@ void sendToSTM32(void)
  */
 void rx_wifi_task(void *parameters)
 {
-    CPXPacket_t rpx;
+    static CPXPacket_t rpx;
     WiFiCTRLPacket_t wifiPacket;
     while (1)
     {
@@ -119,16 +123,15 @@ void rx_wifi_task(void *parameters)
     }
 }
 
-#define IMG_HEADER 0x01
 
-typdef struct
+typedef struct
 {
     uint8_t header;
     uint16_t width;
     uint16_t height;
     uint16_t depth;
     uint16_t size;
-    uint8_t data[0];
+    uint8_t* data;
 } __attribute__((packed)) ImagePacket_t;
 
 /**
@@ -139,8 +142,8 @@ typdef struct
 void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
 {
 
-    ImagePacket_t packet_to_send;
-    packet_to_send.header = IMG_HEADER;
+     ImagePacket_t packet_to_send;
+    packet_to_send.header = 0x01;
     packet_to_send.width = width;
     packet_to_send.height = height;
     packet_to_send.depth = 1;
@@ -148,7 +151,7 @@ void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
     memcpy(packet_to_send.data, image, packet_to_send.size);
 
     CPXPacket_t packet;
-    cpxInitRoutePacket(&packet, CPX_ROUTES_WIFI_TO_PC, APP, &packet.route);
+    cpxInitRoute(CPX_T_GAP8, CPX_T_WIFI_HOST, CPX_F_APP, &packet.route);
 
     xSemaphoreTake(capture_sem, portMAX_DELAY);
     sendBufferViaCPXBlocking(&packet, (uint8_t *)&packet_to_send, sizeof(packet_to_send));
@@ -181,7 +184,7 @@ void camera_task(void *parameters)
     while (1)
     {
         // start the camera and set the callback
-        pi_camera_capture_async(&camera, imgBuff, CAM_WIDTH * CAM_HEIGHT, capture_done_cb, NULL);
+        pi_camera_capture_async(&camera, imgBuff, CAM_WIDTH * CAM_HEIGHT, pi_task_callback(&task1, capture_done_cb, NULL));
         pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
         // wait for the end of the capture
         xSemaphoreTake(capture_sem, portMAX_DELAY);
