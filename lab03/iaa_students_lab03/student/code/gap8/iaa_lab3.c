@@ -21,6 +21,7 @@ static struct pi_device camera;
 unsigned char *imgBuff;
 static pi_buffer_t buffer;
 static SemaphoreHandle_t capture_sem = NULL;
+static CPXPacket_t packet;
 static pi_task_t task1;
 
 void start(void)
@@ -56,9 +57,6 @@ void start(void)
 
     capture_sem = xSemaphoreCreateBinary();
 
-    uint32_t fcFreq = pi_freq_get(PI_FREQ_DOMAIN_FC);
-    printf("FC Frequency: %d\n", fcFreq);
-
     while (1)
     {
         sendToSTM32();
@@ -75,21 +73,17 @@ void start(void)
  */
 void sendToSTM32(void)
 {
+    cpxEnableFunction(CPX_F_APP);
+    
+    // Récupère et place la fréquence de la FC dans le paquet
+    memcpy(packet.data, &pi_freq_get(PI_FREQ_DOMAIN_FC), sizeof(int));
+    packet.dataLength = sizeof(int);
 
-    CPXPacket_t packet;
-    // packet source , packet destination, function, route
-    cpxInitRoute(CPX_T_GAP8, CPX_T_ESP32, CPX_F_APP, &packet.route);
-
-    // copy data to packet
-    //  TODO: CHECK EXAMPLE stm_gap8_cpx.c to add uart data collection
-  
-  
-    packet.data[0] = 0xBA;
-    packet.dataLength = 4;
-    xSemaphoreTake(capture_sem, portMAX_DELAY);
-    cpxSendPacketBlocking(&packet);
-    xSemaphoreGive(capture_sem);
-    /* TODO */
+    // Initialise la route et envoie le paquet
+    cpxInitRoute(CPX_T_GAP8, CPX_T_STM32, CPX_F_APP, &packet.route);
+    //xSemaphoreTake(capture_sem, portMAX_DELAY); TODO : Checker pourquoi la sémaphore n'est pas libre
+    cpxSendPacket(&packet);
+    //xSemaphoreGive(capture_sem);
 }
 
 /**
