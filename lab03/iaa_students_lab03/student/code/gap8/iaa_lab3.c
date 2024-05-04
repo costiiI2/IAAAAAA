@@ -16,13 +16,10 @@ int open_pi_camera_himax(struct pi_device *device);
 static void capture_done_cb(void *arg);
 void camera_task(void *parameters);
 
-static int wifiClientConnected = 0;
 static struct pi_device camera;
 unsigned char *imgBuff;
 static pi_buffer_t buffer;
 static SemaphoreHandle_t capture_sem = NULL;
-static CPXPacket_t packet;
-static pi_task_t task1;
 
 void start(void)
 {
@@ -46,10 +43,12 @@ void start(void)
         return;
     }
 
+    imgBuff = (unsigned char *)pmsis_l2_malloc(CAM_WIDTH * CAM_HEIGHT);
+    if (imgBuff == NULL) {
+        cpxPrintToConsole(LOG_TO_CRTP, "Failed to allocate image buffer\n");
+    }
     pi_buffer_init(&buffer, PI_BUFFER_TYPE_L2, imgBuff);
     pi_buffer_set_format(&buffer, CAM_WIDTH, CAM_HEIGHT, 1, PI_BUFFER_FORMAT_GRAY);
-
-    imgBuff = (unsigned char *)pmsis_l2_malloc(CAM_WIDTH * CAM_HEIGHT);
 
     /* Create Camera task */
     xTask = xTaskCreate(camera_task, "camera_task", configMINIMAL_STACK_SIZE * 4,
@@ -57,13 +56,21 @@ void start(void)
 
     capture_sem = xSemaphoreCreateBinary();
 
+    bool fcFreqSent = false;
     while (1)
     {
-        sendToSTM32();
+        if (!fcFreqSent) {
+            sendToSTM32();
+            fcFreqSent = true;
+        }
+        
         pi_yield();
         vTaskDelay(100);
     }
 }
+
+
+static CPXPacket_t packet;
 
 /**
  * @brief transfer UART to stm32
@@ -76,15 +83,18 @@ void sendToSTM32(void)
     cpxEnableFunction(CPX_F_APP);
     
     // Récupère et place la fréquence de la FC dans le paquet
-    memcpy(packet.data, &pi_freq_get(PI_FREQ_DOMAIN_FC), sizeof(int));
+    int fcFreq = pi_freq_get(PI_FREQ_DOMAIN_FC);
+    memcpy(packet.data, &fcFreq, sizeof(int));
     packet.dataLength = sizeof(int);
 
     // Initialise la route et envoie le paquet
     cpxInitRoute(CPX_T_GAP8, CPX_T_STM32, CPX_F_APP, &packet.route);
-    //xSemaphoreTake(capture_sem, portMAX_DELAY); TODO : Checker pourquoi la sémaphore n'est pas libre
-    cpxSendPacket(&packet);
-    //xSemaphoreGive(capture_sem);
+    cpxSendPacketBlocking(&packet);
 }
+
+
+static int wifiClientConnected = 0;
+static CPXPacket_t rxp;
 
 /**
  * @brief Task wifi management
@@ -93,26 +103,17 @@ void sendToSTM32(void)
  */
 void rx_wifi_task(void *parameters)
 {
-    static CPXPacket_t rpx;
-    WiFiCTRLPacket_t wifiPacket;
+    cpxEnableFunction(CPX_F_WIFI_CTRL);
+
     while (1)
     {
-        // receive packets and store them in rpx
-        cpxReceivePacketBlocking(CPX_F_WIFI_CTRL, &rpx);
+        cpxReceivePacketBlocking(CPX_F_WIFI_CTRL, &rxp);
 
-        // cast it to a wifi packet
-        wifiPacket = *(WiFiCTRLPacket_t *)rpx.data;
-        // check if a client is connected
-        switch (wifiPacket.cmd)
-        {
-        case WIFI_CTRL_STATUS_CLIENT_CONNECTED:
-            wifiClientConnected = 1;
-            break;
-        case WIFI_CTRL_STATUS_WIFI_CONNECTED:
-            wifiClientConnected = 0;
-            break;
-        default:
-            break;
+        WiFiCTRLPacket_t *wifiCtrl = (WiFiCTRLPacket_t*) rxp.data;
+
+        if (wifiCtrl->cmd == WIFI_CTRL_STATUS_CLIENT_CONNECTE){
+            cpxPrintToConsole(LOG_TO_CRTP, "Wifi client connection status: %u\n", wifiCtrl->data[0]);
+            wifiClientConnected = wifiCtrl->data[0];
         }
     }
 }
@@ -136,7 +137,7 @@ typedef struct
 void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
 {
 
-     ImagePacket_t packet_to_send;
+    ImagePacket_t packet_to_send;
     packet_to_send.header = 0x01;
     packet_to_send.width = width;
     packet_to_send.height = height;
@@ -160,12 +161,16 @@ void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
  */
 static void capture_done_cb(void *arg)
 {
-    // stop the camera
+    cpxPrintToConsole(LOG_TO_CRTP, "Stop image capture\n");
+    // Arrêter la capture
     pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
-    // release the semaphore to allow a new capture
+
+    // Libérer la sémaphore pour indiquer que la capture est terminée
     xSemaphoreGive(capture_sem);
-    /* TODO */
 }
+
+
+static pi_task_t task1;
 
 /**
  * @brief Task enabling the acquisition/sending of an image
@@ -175,17 +180,37 @@ static void capture_done_cb(void *arg)
  */
 void camera_task(void *parameters)
 {
-    while (1)
-    {
-        // start the camera and set the callback
-        pi_camera_capture_async(&camera, imgBuff, CAM_WIDTH * CAM_HEIGHT, pi_task_callback(&task1, capture_done_cb, NULL));
+    while(1) {
+        // Si aucun utilisateur est connecté ne fait pas de capture d'image
+        if (wifiClientConnected == 0) {
+            vTaskDelay(50);
+            continue;
+        }
+
+        cpxPrintToConsole(LOG_TO_CRTP, "Client connected...");
+
+        // Set le callback appelé lorsque la capture sera terminée + démarre la capture
+        uint32_t resolution = CAM_WIDTH * CAM_HEIGHT;
+        pi_camera_capture_async(&camera, imgBuff, resolution, pi_task_callback(&task1, capture_done_cb, NULL));
         pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
-        // wait for the end of the capture
+
+        cpxPrintToConsole(LOG_TO_CRTP, " starting capture.\n");
+
         xSemaphoreTake(capture_sem, portMAX_DELAY);
-        // send the image
-        send_image_via_wifi(imgBuff, CAM_WIDTH, CAM_HEIGHT);
+
+        unsigned char *cropped_image = imgBuff; // TODO: Change by cropped image
+        uint16_t cropped_width = 200u;
+        uint16_t cropped_height = 200u;
+        // TODO: Crop de l'image avant envoi par WiFi
+
+        if (wifiClientConnected == 1) {
+            send_image_via_wifi(cropped_image, cropped_height, cropped_width);
+
+        } else {
+            cpxPrintToConsole(LOG_TO_CRTP, "Client disconnected while capturing image. Image has not been sent.\n");
+        }
+        
     }
-    /* TODO */
 }
 
 int open_pi_camera_himax(struct pi_device *device)
