@@ -8,6 +8,8 @@
 #define IMG_ORIENTATION 0x0101
 #define CAM_WIDTH 324
 #define CAM_HEIGHT 244
+#define PIC_WIDTH 200
+#define PIC_HEIGHT 200
 
 void sendToSTM32(void);
 void rx_wifi_task(void *parameters);
@@ -20,6 +22,20 @@ static struct pi_device camera;
 unsigned char *imgBuff;
 static pi_buffer_t buffer;
 static SemaphoreHandle_t capture_sem = NULL;
+static int wifiClientConnected = 0;
+static CPXPacket_t rxp;
+static CPXPacket_t txp;
+static pi_task_t task1;
+
+typedef struct
+{
+    uint8_t magic;
+    uint16_t width;
+    uint16_t height;
+    uint8_t depth;
+    uint8_t type;
+    uint32_t size;
+} __attribute__((packed)) img_header_t;
 
 void start(void)
 {
@@ -44,7 +60,8 @@ void start(void)
     }
 
     imgBuff = (unsigned char *)pmsis_l2_malloc(CAM_WIDTH * CAM_HEIGHT);
-    if (imgBuff == NULL) {
+    if (imgBuff == NULL)
+    {
         cpxPrintToConsole(LOG_TO_CRTP, "Failed to allocate image buffer\n");
     }
     pi_buffer_init(&buffer, PI_BUFFER_TYPE_L2, imgBuff);
@@ -59,18 +76,16 @@ void start(void)
     bool fcFreqSent = false;
     while (1)
     {
-        if (!fcFreqSent) {
+        if (!fcFreqSent)
+        {
             sendToSTM32();
             fcFreqSent = true;
         }
-        
+
         pi_yield();
         vTaskDelay(100);
     }
 }
-
-
-static CPXPacket_t packet;
 
 /**
  * @brief transfer UART to stm32
@@ -81,20 +96,17 @@ static CPXPacket_t packet;
 void sendToSTM32(void)
 {
     cpxEnableFunction(CPX_F_APP);
-    
+
     // Récupère et place la fréquence de la FC dans le paquet
-    int fcFreq = pi_freq_get(PI_FREQ_DOMAIN_FC);
-    memcpy(packet.data, &fcFreq, sizeof(int));
-    packet.dataLength = sizeof(int);
+    uint32_t fcFreq = pi_freq_get(PI_FREQ_DOMAIN_FC);
+    memcpy(txp.data, &fcFreq, sizeof(uint32_t));
+    txp.dataLength = sizeof(uint32_t);
 
     // Initialise la route et envoie le paquet
-    cpxInitRoute(CPX_T_GAP8, CPX_T_STM32, CPX_F_APP, &packet.route);
-    cpxSendPacketBlocking(&packet);
+    cpxInitRoute(CPX_T_GAP8, CPX_T_STM32, CPX_F_APP, &txp.route);
+    cpxSendPacketBlocking(&txp);
+    cpxPrintToConsole(LOG_TO_CRTP, "Sent FC frequency: %u\n", fcFreq);
 }
-
-
-static int wifiClientConnected = 0;
-static CPXPacket_t rxp;
 
 /**
  * @brief Task wifi management
@@ -109,25 +121,15 @@ void rx_wifi_task(void *parameters)
     {
         cpxReceivePacketBlocking(CPX_F_WIFI_CTRL, &rxp);
 
-        WiFiCTRLPacket_t *wifiCtrl = (WiFiCTRLPacket_t*) rxp.data;
+        WiFiCTRLPacket_t *wifiCtrl = (WiFiCTRLPacket_t *)rxp.data;
 
-        if (wifiCtrl->cmd == WIFI_CTRL_STATUS_CLIENT_CONNECTE){
+        if (wifiCtrl->cmd == WIFI_CTRL_STATUS_CLIENT_CONNECTED)
+        {
             cpxPrintToConsole(LOG_TO_CRTP, "Wifi client connection status: %u\n", wifiCtrl->data[0]);
             wifiClientConnected = wifiCtrl->data[0];
         }
     }
 }
-
-
-typedef struct
-{
-    uint8_t header;
-    uint16_t width;
-    uint16_t height;
-    uint16_t depth;
-    uint16_t size;
-    uint8_t* data;
-} __attribute__((packed)) ImagePacket_t;
 
 /**
  * @brief transfer WIFI gap8 to PC
@@ -136,23 +138,20 @@ typedef struct
  */
 void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
 {
+    uint32_t imgSize = width * height;
 
-    ImagePacket_t packet_to_send;
-    packet_to_send.header = 0x01;
-    packet_to_send.width = width;
-    packet_to_send.height = height;
-    packet_to_send.depth = 1;
-    packet_to_send.size = width * height;
-    memcpy(packet_to_send.data, image, packet_to_send.size);
+    img_header_t *imgHeader = (img_header_t *)txp.data;
+    imgHeader->magic = 0xBC;
+    imgHeader->width = width;
+    imgHeader->height = height;
+    imgHeader->depth = 1;
+    imgHeader->type = 0;
+    imgHeader->size = imgSize;
+    txp.dataLength = sizeof(img_header_t);
+    cpxInitRoute(CPX_T_GAP8, CPX_T_WIFI_HOST, CPX_F_APP, &txp.route);
+    cpxSendPacketBlocking(&txp);
 
-    CPXPacket_t packet;
-    cpxInitRoute(CPX_T_GAP8, CPX_T_WIFI_HOST, CPX_F_APP, &packet.route);
-
-    xSemaphoreTake(capture_sem, portMAX_DELAY);
-    sendBufferViaCPXBlocking(&packet, (uint8_t *)&packet_to_send, sizeof(packet_to_send));
-    xSemaphoreGive(capture_sem);
-
-    /* TODO */
+    sendBufferViaCPXBlocking(&txp, (uint8_t *)&image, imgSize);
 }
 
 /**
@@ -161,16 +160,13 @@ void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
  */
 static void capture_done_cb(void *arg)
 {
-    cpxPrintToConsole(LOG_TO_CRTP, "Stop image capture\n");
+    // cpxPrintToConsole(LOG_TO_CRTP, "Stop image capture\n");
     // Arrêter la capture
     pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
 
     // Libérer la sémaphore pour indiquer que la capture est terminée
     xSemaphoreGive(capture_sem);
 }
-
-
-static pi_task_t task1;
 
 /**
  * @brief Task enabling the acquisition/sending of an image
@@ -180,9 +176,12 @@ static pi_task_t task1;
  */
 void camera_task(void *parameters)
 {
-    while(1) {
+
+    while (1)
+    {
         // Si aucun utilisateur est connecté ne fait pas de capture d'image
-        if (wifiClientConnected == 0) {
+        if (wifiClientConnected == 0)
+        {
             vTaskDelay(50);
             continue;
         }
@@ -198,18 +197,27 @@ void camera_task(void *parameters)
 
         xSemaphoreTake(capture_sem, portMAX_DELAY);
 
-        unsigned char *cropped_image = imgBuff; // TODO: Change by cropped image
-        uint16_t cropped_width = 200u;
-        uint16_t cropped_height = 200u;
+        unsigned char cropped_image[PIC_HEIGHT * PIC_WIDTH]; // TODO: Change by cropped image
+
+        // cropping to PIC_heigt and witdh
+
+        for (int i = 0; i < PIC_WIDTH; i++)
+        {
+            for (int j = 0; j < PIC_HEIGHT j++)
+            {
+                cropped_image[i * PIC_WIDTH + j] = imgBuff[i * CAM_WIDTH + j];
+            }
+        }
         // TODO: Crop de l'image avant envoi par WiFi
 
-        if (wifiClientConnected == 1) {
-            send_image_via_wifi(cropped_image, cropped_height, cropped_width);
-
-        } else {
+        if (wifiClientConnected == 1)
+        {
+            send_image_via_wifi(cropped_image, PIC_HEIGHT, PIC_WIDTH);
+        }
+        else
+        {
             cpxPrintToConsole(LOG_TO_CRTP, "Client disconnected while capturing image. Image has not been sent.\n");
         }
-        
     }
 }
 
