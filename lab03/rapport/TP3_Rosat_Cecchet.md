@@ -31,15 +31,51 @@ Les messages de l'ESP32 et de la librairie CPX sont gérés par la `xTask` `rx_w
 
 Lorsqu'un premier client se connecte au WiFi du drone, sa connection est acceptée et il peut ensuite ouvrir un socket. Si maintenant un second client tente de se connecter pendant que le premier est encore connecté, la connection ne peut se faire. Cependant, on ne voit pas dans notre console qu'une seconde connection a été refusée. Le client affiche simplement un message pour dire que le WiFi est inaccesible sans autres informations. Ce comportement est bizarre sachant que, selon le datasheet du module EPS32 NINA W102, ce dernier prend en charge le WiFi 802.11b/g/n qui devrait accepter jusqu'à 200 connections en simultané.
 
-## Acquisition de l'image
-
-
 
 ## Transfert des informations du GAP8 vers le PC via WiFi
 
+La taille maximale de packet a envoyer a la fois est de 50.
 
+```c
+typedef struct {
+  WiFiCTRLType cmd;
+  uint8_t data[50];
+} __attribute__((packed)) WiFiCTRLPacket_t;
+```
+
+notre protocol de communication est le même que l'exemple fourni mais sans le footer.
+
+Il sagit d'un header
+
+```c
+typedef struct
+{
+    uint8_t magic;
+    uint16_t width;
+    uint16_t height;
+    uint8_t depth;
+    uint8_t type;
+    uint32_t size;
+} __attribute__((packed)) img_header_t;
+```
+puis on envoie les données de l'image en plusieurs paquets de 50 octets.
 
 ## Traitement des images
+
+Nous allons crop les images pour garder la partie du bas de l'image celle ou nous aurons plus d'information par rapport a par exemple le suivi de la ligne blanche
+
+L'image de base est de 244x324 et nous la cropons en 200x200:
+
+```c
+   for (int i = 0; i < PIC_HEIGHT; i++)
+        {
+            for (int j = 0; j < PIC_WIDTH; j++)
+            {
+                cropped_image[i * PIC_WIDTH + j] = imgBuff[(i + CAM_HEIGHT-PIC_HEIGHT) * CAM_WIDTH + j + (CAM_WIDTH-PIC_WIDTH)/2];
+            }
+        }
+```
+
 
 ### Exemple
 

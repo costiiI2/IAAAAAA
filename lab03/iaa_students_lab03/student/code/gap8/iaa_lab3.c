@@ -145,7 +145,7 @@ void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
     imgHeader->width = width;
     imgHeader->height = height;
     imgHeader->depth = 1;
-    imgHeader->type = 0;
+    imgHeader->type = 1;
     imgHeader->size = imgSize;
     txp.dataLength = sizeof(img_header_t);
     cpxInitRoute(CPX_T_GAP8, CPX_T_WIFI_HOST, CPX_F_APP, &txp.route);
@@ -200,19 +200,19 @@ void camera_task(void *parameters)
         unsigned char cropped_image[PIC_HEIGHT * PIC_WIDTH]; // TODO: Change by cropped image
 
         // cropping to PIC_heigt and witdh
+        // get only bottom 200 pixec and crop 62 from left and from right
 
-        for (int i = 0; i < PIC_WIDTH; i++)
+        for (int i = 0; i < PIC_HEIGHT; i++)
         {
-            for (int j = 0; j < PIC_HEIGHT j++)
+            for (int j = 0; j < PIC_WIDTH; j++)
             {
-                cropped_image[i * PIC_WIDTH + j] = imgBuff[i * CAM_WIDTH + j];
+                cropped_image[i * PIC_WIDTH + j] = imgBuff[(i + CAM_HEIGHT-PIC_HEIGHT) * CAM_WIDTH + j + (CAM_WIDTH-PIC_WIDTH)/2];
             }
         }
-        // TODO: Crop de l'image avant envoi par WiFi
 
         if (wifiClientConnected == 1)
         {
-            send_image_via_wifi(cropped_image, PIC_HEIGHT, PIC_WIDTH);
+            send_image_via_wifi(cropped_image, PIC_WIDTH, PIC_HEIGHT);
         }
         else
         {
