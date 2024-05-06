@@ -138,6 +138,7 @@ void rx_wifi_task(void *parameters)
  */
 void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
 {
+    cpxInitRoute(CPX_T_GAP8, CPX_T_WIFI_HOST, CPX_F_APP, &txp.route);
     uint32_t imgSize = width * height;
 
     img_header_t *imgHeader = (img_header_t *)txp.data;
@@ -145,13 +146,12 @@ void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
     imgHeader->width = width;
     imgHeader->height = height;
     imgHeader->depth = 1;
-    imgHeader->type = 1;
+    imgHeader->type = 0;
     imgHeader->size = imgSize;
     txp.dataLength = sizeof(img_header_t);
-    cpxInitRoute(CPX_T_GAP8, CPX_T_WIFI_HOST, CPX_F_APP, &txp.route);
     cpxSendPacketBlocking(&txp);
 
-    sendBufferViaCPXBlocking(&txp, (uint8_t *)&image, imgSize);
+    sendBufferViaCPXBlocking(&txp, image, imgSize);
 }
 
 /**

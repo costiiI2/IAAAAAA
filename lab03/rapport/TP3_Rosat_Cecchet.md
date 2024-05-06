@@ -34,7 +34,7 @@ Lorsqu'un premier client se connecte au WiFi du drone, sa connection est accept�
 
 ## Transfert des informations du GAP8 vers le PC via WiFi
 
-La taille maximale de packet a envoyer a la fois est de 50.
+La taille maximale de packet a envoyer a la fois est de 50 ceci est definie par la structure donnée ci-dessous:
 
 ```c
 typedef struct {
@@ -45,7 +45,8 @@ typedef struct {
 
 notre protocol de communication est le même que l'exemple fourni mais sans le footer.
 
-Il sagit d'un header
+Il sagit d'un header qu'il faut envoyer en premier pour indiquer la taille de l'image, le type et une constante magique.
+Ensuite envoyer les données de l'image en plusieurs paquets de 50 octets.
 
 ```c
 typedef struct
@@ -58,14 +59,28 @@ typedef struct
     uint32_t size;
 } __attribute__((packed)) img_header_t;
 ```
-puis on envoie les données de l'image en plusieurs paquets de 50 octets.
+Le type de l'image est 0 pour notre type d'image.
+
+
+### fonctionnnement de recuperation des images
+
+Pour récupérer les images, nous utilisons un script python qui une fois la machine hôte connecter sur le wifi du drone, ouvre un socket et attend de recevoir des données. Une fois les données reçues, le script affiche un flux d'image.
+
+Il faut flash le gap8 avec la commande suivante:
+```bash
+make build image flash
+```
+une fois flashé, il faut redemarer le drone pour que le gap8 puisse envoyer les images.
+
+Pour lancer le script python, il faut lancer la commande suivante:
+```bash
+python3 image_retriever.py
+```
+grâce a openCV, le script affiche un flux d'image.
 
 ## Traitement des images
 
-Nous allons crop les images pour garder la partie du bas de l'image celle ou nous aurons plus d'information par rapport a par exemple le suivi de la ligne blanche
-
-L'image de base est de 244x324 et nous la cropons en 200x200:
-
+L'image de base est de 244x324 et nous la cropons en 200x200 pour l'afficher sur l'écran du client. Pour ce faire, nous avons simplement décidé de prendre les 200 pixels du bas de l'image originale et de les centrer horizontalement. Voici le code que nous avons utilisé pour effectuer ce traitement :
 ```c
    for (int i = 0; i < PIC_HEIGHT; i++)
         {
@@ -75,7 +90,11 @@ L'image de base est de 244x324 et nous la cropons en 200x200:
             }
         }
 ```
+### Explication de l'algorithme
 
+<img src="crop-expl.jpg" style="zoom:30%;" />
+
+Dans la figure ci-dessus, on peut voir l'image originale et l'image redimensionnée. Nous avons décidé de centrer cette dernière sur son axe horizontal mais de la placer au plus bas sur son axe vertical. Cela nous permet de garder les informations visuelles qui se situes au plus proche du drone (voir image dans la partie exemple).
 
 ### Exemple
 
@@ -83,8 +102,7 @@ Sur les images ci-dessous, on peut voir à droite, l'image originale provenant d
 
 ![Figure 1](croped_image.png)
 
-### Explication de l'algorithme
 
-<img src="crop-expl.jpg" style="zoom:30%;" />
 
-Dans la figure ci-dessus, on peut voir l'image originale et l'image redimensionnée. Nous avons décidé de centrer cette dernière sur son axe horizontal mais de la placer au plus bas sur son axe vertical. Cela nous permet de garder les informations visuelles qui se situes au plus proche du drone (voir image dans la partie exemple).
+
+
