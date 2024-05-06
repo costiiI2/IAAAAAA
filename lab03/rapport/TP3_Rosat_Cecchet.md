@@ -6,7 +6,7 @@
 
 ## Transfert des informations de l'UART vers STM32
 
-Valeur de la fréquence de la FC : `IAALAB03: CL FREQ = 50000000`. Cette dernière est envoyée depuis le GAP8 et récupérée par le STM32 avant d'être affichée dans la console du client Crazyflie.
+Valeur de la fréquence de la FC : `IAALAB03: CL FREQ = 50'000'000`. Cette dernière est envoyée depuis le GAP8 et récupérée par le STM32 avant d'être affichée dans la console du client Crazyflie.
 
 ## Création d'une tâche WiFi
 
