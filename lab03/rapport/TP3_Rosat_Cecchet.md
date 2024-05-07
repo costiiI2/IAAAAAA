@@ -34,7 +34,7 @@ Lorsqu'un premier client se connecte au WiFi du drone, sa connection est accept�
 
 ## Transfert des informations du GAP8 vers le PC via WiFi
 
-La taille maximale de packet a envoyer a la fois est de 50 ceci est definie par la structure donnée ci-dessous:
+La taille maximale de packet a envoyer à la fois est de 50. Ceci est défini par la structure donnée ci-dessous:
 
 ```c
 typedef struct {
@@ -43,62 +43,86 @@ typedef struct {
 } __attribute__((packed)) WiFiCTRLPacket_t;
 ```
 
-notre protocol de communication est le même que l'exemple fourni mais sans le footer.
+Notre protocole de communication est le même que l'exemple `wifi_image_streamer.c` se trouvant dans la machine virtuelle fournie, mais sans le footer.
 
-Il sagit d'un header qu'il faut envoyer en premier pour indiquer la taille de l'image, le type et une constante magique.
-Ensuite envoyer les données de l'image en plusieurs paquets de 50 octets.
+Il sagit d'un header qu'il faut envoyer en premier pour indiquer la taille de l'image, le type (RAW ou JPEG) et une constante magique (souvent utilisée pour indiquer le début d'une en-tête). Ce header est important car l'image est ensuite envoyée par paquets de 50 octets et nous devons indiquer au destinataire le quantité de données qui sera envoyée.
 
 ```c
-typedef struct
-{
-    uint8_t magic;
+typedef struct {
+    uint8_t magic; // Identifiant pour indiquer le début de l'en-tête
     uint16_t width;
     uint16_t height;
-    uint8_t depth;
-    uint8_t type;
+    uint8_t depth; // Profondeur de l'image: nuances de gris (=1), RGB (=3) et RGB-D (=4)
+    uint8_t type; // Encodage: RAW (=0) ou JPEG (=1)
     uint32_t size;
 } __attribute__((packed)) img_header_t;
 ```
-Le type de l'image est 0 pour notre type d'image.
 
+Nous avons décidé de laisser tout le header afin de rendre le code évolutif. Cela permet d'envoyer aussi des images qui seraient prétraitées en JPEG, ou alors des images en couleur / couleur-profondeur. Pour notre cas, nous envoyons des images en nuances de gris et encodées en RAW.
 
-### fonctionnnement de recuperation des images
+### Fonctionnnement du script de récupération des images
 
-Pour récupérer les images, nous utilisons un script python qui une fois la machine hôte connecter sur le wifi du drone, ouvre un socket et attend de recevoir des données. Une fois les données reçues, le script affiche un flux d'image.
+Pour récupérer les images, nous utilisons un script python qui, une fois la machine hôte connectée sur le wifi du drone, ouvre un socket et attend de recevoir des données. Une fois les données reçues, le script affiche un flux d'image.
 
-Il faut flash le gap8 avec la commande suivante:
+Il faut flash le GAP8 avec la commande suivante:
 ```bash
 make build image flash
 ```
-une fois flashé, il faut redemarer le drone pour que le gap8 puisse envoyer les images.
+Ceci fait, le drone doit être redémarré afin d'exécuter le nouveau code et d'envoyer les images.
 
 Pour lancer le script python, il faut lancer la commande suivante:
 ```bash
 python3 image_retriever.py
 ```
-grâce a openCV, le script affiche un flux d'image.
+Dans un premier temps, le header est récupéré :
+
+```python
+packetInfoRaw = rx_bytes(4)
+[length, routing, function] = struct.unpack('<HBB', packetInfoRaw)
+
+imgHeader = rx_bytes(length - 2)
+[magic, width, height, depth, format, size] = struct.unpack('<BHHBBI', imgHeader)
+```
+
+Puis, si le magic paquet est correcte, l'image sera récupérée dans un tableau ;
+
+```python
+imgStream = bytearray()
+while len(imgStream) < size:
+  # Récupération de l'image
+```
+
+Pour finir, le buffer est lu et convertit en image :
+
+```python
+bayer_img = np.frombuffer(imgStream, dtype=np.uint8)   
+bayer_img.shape = (200, 200)
+cv2.imshow('Raw', bayer_img)
+```
 
 ## Traitement des images
 
-L'image de base est de 244x324 et nous la cropons en 200x200 pour l'afficher sur l'écran du client. Pour ce faire, nous avons simplement décidé de prendre les 200 pixels du bas de l'image originale et de les centrer horizontalement. Voici le code que nous avons utilisé pour effectuer ce traitement :
+La taille de l'image de base est de 244x324. Cette dernière est trop grande pour nos manipulations, nous allons donc devoir la redimensionner. Cette partie est directement faite sur le drone et permet de réduire la quantité de données qui doit être transférée vers le client. Voici le code qui est utilisé pour cela :
 ```c
-   for (int i = 0; i < PIC_HEIGHT; i++)
-        {
-            for (int j = 0; j < PIC_WIDTH; j++)
-            {
-                cropped_image[i * PIC_WIDTH + j] = imgBuff[(i + CAM_HEIGHT-PIC_HEIGHT) * CAM_WIDTH + j + (CAM_WIDTH-PIC_WIDTH)/2];
-            }
-        }
+for (int i = 0; i < CROPPED_HEIGHT; i++) {
+    for (int j = 0; j < CROPPED_WIDTH; j++) {
+        cropped_image[i * CROPPED_WIDTH + j] = imgBuff[(i + ORIGINAL_HEIGHT - CROPPED_HEIGHT) *
+                                                       ORIGINAL_WIDTH + j + (ORIGINAL_WIDTH -
+                                                       CROPPED_WIDTH)/2];
+    }
+}
 ```
 ### Explication de l'algorithme
 
-<img src="crop-expl.jpg" style="zoom:30%;" />
+<img src="crop-expl.jpg" style="zoom:40%;" />
 
 Dans la figure ci-dessus, on peut voir l'image originale et l'image redimensionnée. Nous avons décidé de centrer cette dernière sur son axe horizontal mais de la placer au plus bas sur son axe vertical. Cela nous permet de garder les informations visuelles qui se situes au plus proche du drone (voir image dans la partie exemple).
 
+Quant au fonctionnement de l'algorithme (voir code plus haut), ce dernier utilise 2 boucles imbriquées qui vont parcourir les pixels de l'image redimensionnés (image rouge). La première permet de parcourir chaque ligne de l'image. La seconde elle parcourt chaque pixel. Et dans la seconde boucle, les index sont calculés en ajoutant les offset gauche et supérieurs afin de copier dans l'image redimensionnée, uniquement les pixels correspondants de l'image originale.
+
 ### Exemple
 
-Sur les images ci-dessous, on peut voir à droite, l'image originale provenant du drone (244x324) et à gauche, l'image redimensionnée (200x200).
+Sur les images ci-dessous, on peut voir à droite, l'image originale prise par la caméra (244x324) et à gauche, l'image redimensionnée (200x200). Pour réaliser cet exemple, nous avons envoyé l'image de gauche sans appliquer le crop et l'image de droite une fois le crop appliqué.
 
 ![Figure 1](croped_image.png)
 
