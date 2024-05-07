@@ -142,11 +142,11 @@ void send_image_via_wifi(unsigned char *image, uint16_t width, uint16_t height)
     uint32_t imgSize = width * height;
 
     img_header_t *imgHeader = (img_header_t *)txp.data;
-    imgHeader->magic = 0xBC;
+    imgHeader->magic = 0xBC; // Identifiant pour indiquer le début de l'en-tête
     imgHeader->width = width;
     imgHeader->height = height;
-    imgHeader->depth = 1;
-    imgHeader->type = 0;
+    imgHeader->depth = 1; // Profondeur de l'image: nuances de gris (=1), RGB (=3) et RGB-D (=4)
+    imgHeader->type = 0; // Encodage: RAW (=0) ou JPEG (=1)
     imgHeader->size = imgSize;
     txp.dataLength = sizeof(img_header_t);
     cpxSendPacketBlocking(&txp);
