@@ -200,3 +200,9 @@ Comme la quantization engendre une perte d'informations, il faut dans un premier
 Ces images doivent être variées. Les diverses classes doivent avoir suffisamment d'images et le même nombre d'images par classe. Chaque classe doit elle même être suffisamment diversifiée avec différentes prises de vues, différentes conditions d'éclairage etc. De plus, les images doivent correspondre à la taille attendue en entrée du réseau.
 
 **In your generated file model.h, find the quantization constants (OUT_SCALE) and explain why they may be different than the ones you had to compute in stages 1 and 2.**
+
+Pour calculer les quantizations dans le fichier `model.h`, on a dû fournir une image spécifique afin de créer des tenseurs qui ont ensuite été utilisé dans la commande suivante : `nntool -g -M . -m model.c -T tensors -H model.h model_lab4.json`. Alors que dans notre notebook Jupyter, la quantization a été réalisée sur un modèle entraîné (qui a vu toutes les images du jeu d'entraînement). Cette différence explique la différence entre les échelles de quantization.
+
+S'ajoute à cela les méthodes de calcul différentes. Dans notre notebook, on a utilisé l'approche des écarts-types, alors que dans NNTool, `--scheme SQ8 a été utilisé`.
+
+Et pour finir, NNTool effectue des optimisation supplémentaires après le calcul initial des échelles pour améliorer la performance ou réduire l'erreur de quantization.
