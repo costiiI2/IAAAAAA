@@ -1,0 +1,25 @@
+Etudiants :
+Rosat Cédric
+Cecchet Costantino
+
+
+Report                                            :   1.0 / 2.0
+Python code                                       :   1.5 / 2.0
+Line detection accuracy                           :   0.0 / 0.0
+Reproducibiility and compliance with instructions :  0.25 / 1.0
+Bonus / Malus                                     :   0.0 / 5.0
+
+Note finale                                       : 3.8
+
+
+Remarque assistant: 
+Report:
+- dataset ok
+- Sobel + DBScan is a fair solution for the task but no neural net -> can't be tested with our script
+- Analysis of hyperparameters not present
+- What metrics did you use to validate your results?
+
+Code: ok but no neural network
+Line detection accuracy: could not run the tests due to errors in the students' code (Expected 2D array, got 1D array instead)
+Reproducibility: no packages version in the requirements file
+Compliance with instructions: expecting incorrect input shape
