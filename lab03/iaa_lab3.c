@@ -247,6 +247,9 @@ int open_pi_camera_himax(struct pi_device *device)
     }
     pi_camera_control(device, PI_CAMERA_CMD_STOP, 0);
     pi_camera_control(device, PI_CAMERA_CMD_AEG_INIT, 0);
+    
+    ///home/bitcraze/Desktop/projects/gap_sdk/rtos/pmsis/bsp/camera/himax/himax.h
+    //HIMAX_MIN/MAX_DGAIN meme valeur 0x210C
 
     return 0;
 }
