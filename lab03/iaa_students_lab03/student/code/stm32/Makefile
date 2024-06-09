@@ -12,7 +12,7 @@
 # We want to execute the main Makefile for the firmware project,
 # it will handle the build for us.
 #
-CRAZYFLIE_BASE := ../../../crazyflie-firmware
+CRAZYFLIE_BASE := /home/bitcraze/Desktop/projects/crazyflie-firmware # TODO: SET `crazyflie-firmwate/` PATH
 
 #
 # We override the default OOT_CONFIG here, we could also name our config
@@ -20,4 +20,4 @@ CRAZYFLIE_BASE := ../../../crazyflie-firmware
 #
 OOT_CONFIG := $(PWD)/app-config
 
-include $(CRAZYFLIE_BASE)/tools/make/oot.mk
+include /home/bitcraze/Desktop/projects/crazyflie-firmware/tools/make/oot.mk

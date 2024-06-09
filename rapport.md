@@ -158,3 +158,21 @@ points = [pathfinder.detect_line(image) for image in images]
 ```
 
 Meaning that we need to implement the function `get_direction` that takes an image as input and returns a 2D directional vector.
+
+## **usefull commands**
+
+
+### **Flash the drone stm32**
+```bash
+make
+cfloader flash build/cf2.bin stm32-fw -w radio://0/80/2M/E7E7E7E718
+```
+
+### **source and flash the gap sdk**
+
+
+```bash
+source ~/projects/gap_sdk/sdk_env/bin/activate
+source ~/projects/gap_sdk/configs/ai_deck.sh
+make build image flash
+```
