@@ -84,11 +84,9 @@ def image_callback(image):
    
 
 
-def key_listener(stop_event):
-    while not stop_event.is_set():
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            stop_event.set()
-            break
+MAX_TIME = 40 # seconds
+
+MAX_TIME = 40 # seconds
 
 
 if __name__ == "__main__":
@@ -147,8 +145,9 @@ if __name__ == "__main__":
 
     # -------------- #
 
-    #while not stop_event.is_set():
-    while True:
+
+    start_time = time.time()
+    while time.time() - start_time < MAX_TIME:
         img = image_receiver.pop()
         if img is None:
             print("no img")
@@ -159,12 +158,11 @@ if __name__ == "__main__":
             print("Image received")
             bottle_counter.count_bottles_stream(img)
 
+=======
+            bottle_counter.count_bottles_stream(cv2.cvtColor(img, cv2.COLOR_BRG2RGB))
             
     image_receiver.stop()
     bottle_counter.get_bottle_counter()
 
     image_receiver_thread.join()
     bottle_counter_thread.join()
-    key_listener_thread.join()
-
-    cv2.destroyAllWindows()
