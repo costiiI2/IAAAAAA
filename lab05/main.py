@@ -158,7 +158,6 @@ if __name__ == "__main__":
             print("Image received")
             bottle_counter.count_bottles_stream(img)
 
-=======
             bottle_counter.count_bottles_stream(cv2.cvtColor(img, cv2.COLOR_BRG2RGB))
             
     image_receiver.stop()
