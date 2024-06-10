@@ -47,7 +47,7 @@ void appMain()
     {
       commanderSetSetpoint(&s, 3);
       vTaskDelay(M2T(10));
-      continue;
+      
     }
   }
 }
