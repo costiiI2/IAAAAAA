@@ -4,11 +4,7 @@ from threading import Event, Thread
 import cv2
 import time
 
-def key_listener(stop_event):
-    while not stop_event.is_set():
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            stop_event.set()
-            break
+MAX_TIME = 40 # seconds
 
 
 if __name__ == "__main__":
@@ -28,24 +24,17 @@ if __name__ == "__main__":
     bottle_counter_thread = Thread(target=bottle_counter.start_stream_bottle_count)
     bottle_counter_thread.start()
 
-    #stop_event = Event()
-    #key_listener_thread = Thread(target=key_listener, args=(stop_event,))
-    #key_listener_thread.start()
-
-    #while not stop_event.is_set():
-    while True:
+    start_time = time.time()
+    while time.time() - start_time < MAX_TIME:
         img = image_receiver.pop()
         if img is None:
             time.sleep(0.5)
             continue
         else:
-            bottle_counter.count_bottles_stream(img)
+            bottle_counter.count_bottles_stream(cv2.cvtColor(img, cv2.COLOR_BRG2RGB))
             
     image_receiver.stop()
     bottle_counter.get_bottle_counter()
 
     image_receiver_thread.join()
     bottle_counter_thread.join()
-    key_listener_thread.join()
-
-    cv2.destroyAllWindows()
