@@ -10,6 +10,10 @@ from LineDetectionModel.PathFinder import PathFinder
 path_finder = PathFinder(324, 244, 30)
 path_finder.load('./LineDetectionModel/pathfinder3.pth')
 
+
+MAX_TIME = 40 # seconds
+
+running = True
 # drone control imports #
 
 import logging
@@ -28,7 +32,7 @@ from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 # drone control constants #
-DEFAULT_HEIGHT = 0.2
+DEFAULT_HEIGHT = 0.5
 BOX_LIMIT = 0.5
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E718')
 # drone variables #
@@ -50,21 +54,12 @@ def log_pos_callback(timestamp, data, logconf):
     position_estimate[0] = data['stateEstimate.x']
     position_estimate[1] = data['stateEstimate.y']
 
-def move_linear_simple(scf):
-    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-        time.sleep(3)
-        mc.forward(0.2)
-        time.sleep(1)
-        mc.back(0.2)
-        time.sleep(1)
-
 x = 0
 y = 0
 def move_to(scf):
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-            mc.turn_right(90)
-            print("x")
-            print(x)
+            while running:
+                mc.circle_right(0.2)
     return
 # ---------------------- #
 
@@ -82,12 +77,6 @@ def image_callback(image):
     # Further processing with coords
     print(coords)
    
-
-
-MAX_TIME = 40 # seconds
-
-MAX_TIME = 40 # seconds
-
 
 if __name__ == "__main__":
 
@@ -139,14 +128,14 @@ if __name__ == "__main__":
             print('No flow deck detected!')
             sys.exit(1)
 
-        logconf.start()
-        move_to(scf)
-        logconf.stop()
 
     # -------------- #
 
 
     start_time = time.time()
+    logconf.start()
+    move_to(scf)
+
     while time.time() - start_time < MAX_TIME:
         img = image_receiver.pop()
         if img is None:
@@ -159,7 +148,8 @@ if __name__ == "__main__":
             bottle_counter.count_bottles_stream(img)
 
             bottle_counter.count_bottles_stream(cv2.cvtColor(img, cv2.COLOR_BRG2RGB))
-            
+    running = False
+    logconf.stop()
     image_receiver.stop()
     bottle_counter.get_bottle_counter()
 
