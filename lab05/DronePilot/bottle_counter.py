@@ -2,7 +2,7 @@ import cv2
 import cvlib
 from cvlib.object_detection import draw_bbox
 import matplotlib.pyplot as plt
-from .centroidtracker import CentroidTracker
+from .centroid_tracker import CentroidTracker
 from tqdm import tqdm
 import argparse
 
