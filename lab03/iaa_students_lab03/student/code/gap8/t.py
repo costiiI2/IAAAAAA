@@ -65,16 +65,38 @@ def move_linear_simple(scf):
 
 def move_box_limit(scf):
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-        body_x_cmd = 0.1
-        body_y_cmd = 0.0
-        max_vel = 1
-        turn_angle = 15  # degrees
-        turn_duration = 0.5 # seconds
-        turn = 0
+    
 
-        while True:
-                
-                mc.circle_right(0.5, velocity=2)
+        
+        mc.move_distance(0.2,0,0,velocity=0.5)
+        mc.turn_right(35)
+        mc.move_distance(0.2,0,0,velocity=0.5)
+        mc.turn_left(40)
+        mc.move_distance(0.5, 0, 0, velocity=0.5)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.5)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.5)
+        mc.turn_left(60)
+        mc.move_distance(0.5,0,0,velocity=0.5)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.5)
+        mc.turn_right(20)
+        mc.move_distance(0.2,0,0,velocity=0.5)
+        mc.turn_right(20)
+        mc.move_distance(0.7,0,0,velocity=0.5)
+        mc.turn_left(40)
+        mc.move_distance(0.4,0,0,velocity=0.5)
+        mc.turn_left(40)
+        mc.move_distance(0.6,0,0,velocity=0.5)
+        mc.turn_left(40)                
+        mc.move_distance(0.5,0,0,velocity=0.5)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.5)
+        mc.turn_left(80)
+        mc.move_distance(0.8,0,0,velocity=0.5)
+
+        
                 
                 
 

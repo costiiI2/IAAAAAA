@@ -102,7 +102,7 @@ while(1):
 
       if format == 0:
           bayer_img = np.frombuffer(imgStream, dtype=np.uint8)   
-          bayer_img.shape = (200, 200)
+          bayer_img.shape = (244, 324)
           cv2.imshow('Raw', bayer_img)
           if args.save:
               cv2.imwrite(f"stream_out/raw/img_{count:06d}.png", bayer_img)
