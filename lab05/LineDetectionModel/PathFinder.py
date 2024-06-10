@@ -73,8 +73,9 @@ class PathFinder(nn.Module):
         model_path : str
             Path to the model's saved weights
         """
-        try: self.load_state_dict(torch.load(model_path)['model_state_dict'])
-        except: self.load_state_dict(torch.load(model_path))
+        try: self.load_state_dict(torch.load(model_path,map_location=torch.device('cpu'))['model_state_dict'])
+        except: self.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+
 
     def preprocess(self, image, highlight_vert_lines=False, remove_hori_lines=False, plot=False):
         """Preprocess the given image

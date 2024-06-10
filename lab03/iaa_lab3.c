@@ -238,7 +238,7 @@ int open_pi_camera_himax(struct pi_device *device)
     uint8_t set_value = 3;
     uint8_t reg_value;
     pi_camera_reg_set(device, IMG_ORIENTATION, &set_value);
-    pi_time_wait_us(1000000);
+    pi_time_wait_us(100000);
     pi_camera_reg_get(device, IMG_ORIENTATION, &reg_value);
     if (set_value != reg_value)
     {

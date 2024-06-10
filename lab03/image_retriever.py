@@ -97,8 +97,8 @@ while(1):
      
       count = count + 1
       meanTimePerImage = (time.time()-start) / count
-      print("{}".format(meanTimePerImage))
-      print("{}".format(1/meanTimePerImage))
+      #print("{}".format(meanTimePerImage))
+      #print("{}".format(1/meanTimePerImage))
 
       if format == 0:
           bayer_img = np.frombuffer(imgStream, dtype=np.uint8)   
