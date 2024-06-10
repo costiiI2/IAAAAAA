@@ -1,7 +1,7 @@
 
 # URI to the Crazyflie to connect to
 
-DEFAULT_HEIGHT = 0.3
+DEFAULT_HEIGHT = 0.5
 BOX_LIMIT = 0.5
 
 import logging
@@ -56,31 +56,31 @@ def log_pos_callback(timestamp, data, logconf):
 
 def move_linear_simple(scf):
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-        time.sleep(1)
+        time.sleep(3)
         mc.forward(0.5)
-        time.sleep(1)
+        time.sleep(3)
         mc.back(0.5)
-        time.sleep(1)
+        time.sleep(3)
 
 
 def move_box_limit(scf):
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-        body_x_cmd = 0.5
+        body_x_cmd = 0.1
         body_y_cmd = 0.0
-        max_vel = 0.5
+        max_vel = 1
         turn_angle = 15  # degrees
         turn_duration = 0.5 # seconds
+        turn = 0
 
         while True:
-            
-                mc.turn_right(turn_angle)
-                time.sleep(turn_duration)
-
-                mc.start_linear_motion(body_x_cmd, body_y_cmd, 0)
-                time.sleep(0.2)
+                
+                mc.circle_right(0.5, velocity=2)
+                
+                
 
 MINIMAL_ANGLE_TO_TURN = 15
 
+## TODO ADD FUNCTION TO GET ANGLE FROM CAMERA from model
 def motion_with_line_detection(scf):
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
         body_x_cmd = 0.2
@@ -171,5 +171,6 @@ if __name__ == '__main__':
             sys.exit(1)
 
         logconf.start()
+        #move_linear_simple(scf)
         move_box_limit(scf)
         logconf.stop()
