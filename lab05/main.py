@@ -1,11 +1,10 @@
 from DronePilot import BottleCounter, ImageReceiver
 import argparse
-from threading import Event, Thread
+from threading import Event, Thread, Lock
 import cv2
 import time
 
-# model import and variables #
-
+# Model import and variables 
 from LineDetectionModel.PathFinder import PathFinder
 path_finder = PathFinder(324, 244, 30)
 path_finder.load('./LineDetectionModel/pathfinder3.pth')
@@ -14,15 +13,13 @@ path_finder.load('./LineDetectionModel/pathfinder3.pth')
 MAX_TIME = 20 # seconds
 
 running = True
-# drone control imports #
 
-import math
+# Drone control imports 
 import logging
+import math
 import sys
 import time
 import threading
-import argparse
-from threading import Event, Lock
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
@@ -32,12 +29,15 @@ from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
+
 # drone control constants #
 DEFAULT_HEIGHT = 0.3
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E718')
+
 # drone variables #
 deck_attached_event = Event()
 position_estimate = [0, 0]
+
 # drone functions #
 def param_deck_flow(_, value_str):
     value = int(value_str)
@@ -115,6 +115,30 @@ def move_to(scf):
                     print("move")
                     mc.move_distance(0.1,0,0,0.2)
     return
+
+
+def compute_steering_angle(steering_vector):
+    x1, x2, y2 = steering_vector
+    y1 = 244 
+    
+    angle_deg = math.degrees(math.atan2(x2 - x1, y1 - y2))
+    
+    # Normalize the angle to the range [-180, 180]
+    if angle_deg < -180:
+        angle_deg += 360
+    elif angle_deg > 180:
+        angle_deg -= 360
+    
+    # Determine the direction
+    if angle_deg > 0:
+        direction = 'right'
+    else:
+        direction = 'left'
+
+    if(abs(angle_deg) > 90):
+        angle_deg = 90
+    
+    return abs(angle_deg), direction
 # ---------------------- #
 def stationary(scf):
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:  
@@ -207,10 +231,6 @@ if __name__ == "__main__":
 
     bottle_counter_thread = Thread(target=bottle_counter.start_stream_bottle_count)
     bottle_counter_thread.start()
-
-    #stop_event = Event()
-    #key_listener_thread = Thread(target=key_listener, args=(stop_event,))
-    #key_listener_thread.start()
 
     # drone control #
     time.sleep(2)

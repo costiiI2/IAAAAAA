@@ -1,7 +1,7 @@
-# DronePilot package
+# Lab5 - Line Following Drone
 
 ## Description
-This package contains different modules that are used to send directions to the Crazyflie 2.1 drone and track objects. This package does not include the part of the code that is used to control the drone and send the images.
+This two packages contains different modules that are used to send directions to the Crazyflie 2.1 drone by following a line and track objects. This package does not include the parts of the code that are running on the drone and are used to control the drone and send the images.
 
 ## Requirements
 To use this package, you need to create a virtual environment and install the required packages. You can do this by running the following commands:
@@ -11,6 +11,16 @@ conda create -n dronepilot python=3.11
 conda activate dronepilot
 pip install -r requirements.txt
 ```
+
+## Running
+
+To run our code, once the environment is created, run the following command:
+
+```
+python main.py --ip=192.168.4.1 --port=5000 --confidence=0.2 --max_disappeared=200
+```
+
+This command is an example. The `ip` and `port` should be adapted to the drone. `confidence` is used to set the confidence of YOLOv4 for detecting bottles in the images, and `max_disappeared` indicates the number of frames before a bottle that is out of the frame is unregistered.
 
 ## Modules
 
@@ -40,5 +50,8 @@ When using in video mode, the number of bottles detected is displayed at the end
 ### ImageReceiver
 This module is used to connect to the drone, get the images from the drone and save them into a deque. The `get()` method should be run in a separate thread because it has an infinite loop that keeps getting the images from the drone. Then, the 'stop()' method should be called to stop the `get()` method.
 
+### PathFinder
+This module uses the LineDetectionModel provided by the assistants of IAA. The module uses the model to detect the line in the image and get the coordinates of the line. Those points are then used to compute the angle to follow the line.
+
 ## Limitations
-The images provided by the drone are not always clear and low resolution. This can affect the performance of the object detection and tracking algorithms.
+The images provided by the drone are not always clear and low resolution. This can affect the performance of the object detection and tracking algorithms and the line detection model.

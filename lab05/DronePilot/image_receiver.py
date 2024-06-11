@@ -12,10 +12,11 @@ class ImageReceiver():
         self.client_socket.connect((ip, port))
         print("Socket connected")
 
-        self.queue = deque()
-        self.stop_event = Event()
+        self.queue = deque() # Queue for storing images
+        self.stop_event = Event() # Event for stopping the image receiver
 
 
+    # Receive bytes from the socket
     def _rx_bytes(self, size):
         data = bytearray()
         while len(data) < size:
@@ -23,10 +24,12 @@ class ImageReceiver():
         return data
     
 
+    # Receive images from the socket and store them in the queue
     def get(self,image_callback):
         self.stop_event.clear()
         count = 0
 
+        # Receive images until the stop event is set
         while not self.stop_event.is_set():
             packetInfoRaw = self._rx_bytes(4)
             length, _, _ = struct.unpack('<HBB', packetInfoRaw)
@@ -43,6 +46,7 @@ class ImageReceiver():
                     imgStream.extend(chunk)
 
                 count += 1
+                # If the format is RAW, convert the image to grayscale
                 if format == 0:
                     bayer_img = np.frombuffer(imgStream, dtype=np.uint8)
                     bayer_img.shape = (height, width)
@@ -51,20 +55,20 @@ class ImageReceiver():
                     img = cv2.flip(img, 0)
                     image_callback(img)
                     self.queue.append(bayer_img)
-                else:
+                else: # Otherwise, store the image in JPEG format as it is
                     with open("img.jpeg", "wb") as f:
                         f.write(imgStream)
                     nparr = np.frombuffer(imgStream, np.uint8)
                     decoded = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
                     self.queue.append(decoded)
 
-        print(count)
 
-
+    # Stop the image receiver
     def stop(self):
         self.stop_event.set()
 
 
+    # Pop an image from the queue and return it
     def pop(self):
         try:
             return self.queue.pop()
