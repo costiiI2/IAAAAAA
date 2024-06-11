@@ -11,7 +11,7 @@ path_finder = PathFinder(324, 244, 30)
 path_finder.load('./LineDetectionModel/pathfinder3.pth')
 
 
-MAX_TIME = 20 # seconds
+MAX_TIME = 4 # seconds
 
 running = True
 # drone control imports #
@@ -33,7 +33,7 @@ from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 # drone control constants #
-DEFAULT_HEIGHT = 0.3
+DEFAULT_HEIGHT = 0.2
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E718')
 # drone variables #
 deck_attached_event = Event()
@@ -131,8 +131,11 @@ def move_box_limit(scf):
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:        
         mc.move_distance(0.2,0,0,velocity=0.5)
         mc.turn_right(35)
+
         mc.move_distance(0.2,0,0,velocity=0.2)
+
         mc.turn_left(40)
+
         mc.move_distance(0.5,0,0,velocity=0.2)
         mc.turn_left(40)
         mc.move_distance(0.5,0,0,velocity=0.2)
@@ -147,7 +150,7 @@ def move_box_limit(scf):
         mc.turn_right(20)
         mc.move_distance(0.7,0,0,velocity=0.2)
         mc.turn_left(40)
-        mc.move_distance(0.4,0,0,velocity=0.2)
+        mc.move_distance(0.5,0,0,velocity=0.2)
         mc.turn_left(40)
         mc.move_distance(0.6,0,0,velocity=0.2)
         mc.turn_left(40)                
@@ -160,9 +163,12 @@ def move_box_limit(scf):
 # img analyzer #
 def image_callback(image):
     global coords
+    imgc = cv2.cvtColor(image, cv2.COLOR_BayerBG2GRAY)
+    img = imgc.astype("float64")
 
-    preprocessed_image = path_finder.preprocess(image)
-    
+    preprocessed_image = path_finder.preprocess(img)
+
+
     # Get line coordinates
     coords = path_finder.get_line_coords(preprocessed_image)
     
@@ -240,6 +246,8 @@ if __name__ == "__main__":
         move_box_limit(scf)
         #stationary(scf)
         logconf.stop()
+
+        
 
         
         

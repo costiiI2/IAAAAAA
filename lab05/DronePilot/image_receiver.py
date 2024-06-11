@@ -46,10 +46,9 @@ class ImageReceiver():
                 if format == 0:
                     bayer_img = np.frombuffer(imgStream, dtype=np.uint8)
                     bayer_img.shape = (height, width)
-                    img = cv2.cvtColor(bayer_img, cv2.COLOR_BayerBG2GRAY)
-                    img = img.astype(np.float64)
-                    img = cv2.flip(img, 0)
-                    image_callback(img)
+                    bayer_img = cv2.flip(bayer_img,0)
+                    image_callback(bayer_img)
+                    
                     self.queue.append(bayer_img)
                 else:
                     with open("img.jpeg", "wb") as f:
