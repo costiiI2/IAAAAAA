@@ -270,7 +270,7 @@ if __name__ == "__main__":
                 print(i)
                 i += 1
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                bottle_counter.count_bottles_stream(img)
+                bottle_counter.update_stream(img)
                 #save img
                 cv2.imwrite(f'./img_{i}.jpeg', img)
                 img = image_receiver.pop() 
