@@ -11,11 +11,12 @@ path_finder = PathFinder(324, 244, 30)
 path_finder.load('./LineDetectionModel/pathfinder3.pth')
 
 
-MAX_TIME = 40 # seconds
+MAX_TIME = 20 # seconds
 
 running = True
 # drone control imports #
 
+import math
 import logging
 import sys
 import time
@@ -32,8 +33,7 @@ from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 # drone control constants #
-DEFAULT_HEIGHT = 0.5
-BOX_LIMIT = 0.5
+DEFAULT_HEIGHT = 0.3
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E718')
 # drone variables #
 deck_attached_event = Event()
@@ -49,25 +49,117 @@ def param_deck_flow(_, value_str):
         print('Deck is NOT attached!')
 
 def log_pos_callback(timestamp, data, logconf):
-    print(data)
+     #print(data)
     global position_estimate
     position_estimate[0] = data['stateEstimate.x']
     position_estimate[1] = data['stateEstimate.y']
 
-x = 0
-y = 0
+r=0
+l=0
+calculated_angle = 0
+direction = 'gg'
+coords=[0,0,0]
+def compute_steering_angle(steering_vector):
+    x1, x2, y2 = steering_vector
+    y1 = 244  # y1 is always 244
+
+    # Calculate the angle in radians relative to the vertical axis
+    angle_rad = math.atan2(x2 - x1, y1 - y2)
+    
+    # Convert angle to degrees
+    angle_deg = math.degrees(angle_rad)
+    
+    # Normalize the angle to the range [-180, 180]
+    if angle_deg < -180:
+        angle_deg += 360
+    elif angle_deg > 180:
+        angle_deg -= 360
+    
+    # Determine the direction
+    if angle_deg > 0:
+        direction = 'right'
+    else:
+        direction = 'left'
+
+    # Security check, avoid our drone turn into a bayblade
+    if(abs(angle_deg) > 90):
+        angle_deg = 90
+    
+    return abs(angle_deg), direction
+
 def move_to(scf):
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-            while running:
-                mc.circle_right(0.2)
+        time.sleep(1)
+        start_time = time.time()
+        global l,r
+        
+        while time.time() - start_time < MAX_TIME:
+                # si x1 de coord est pass au  millieubouge
+                if(coords[0] < 100):
+                    print("moving left +")
+                    mc.move_distance(0,0.2,0,0.1)
+                elif(coords[0] > 220):
+                    print("moving left -")
+                    mc.move_distance(0,-0.2,0,0.1)
+                if(r > 3):
+                    print("circle rigth")
+                    mc.circle_right(0.2,0.1,20)
+                    r = 0
+                    l = 0
+                elif(l > 3):
+                    print("circle ri^left")
+                    mc.circle_left(0.2,0.1,20)
+                    r=0
+                    l=0
+                else:
+                    print("move")
+                    mc.move_distance(0.1,0,0,0.2)
     return
 # ---------------------- #
+def stationary(scf):
+    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:  
+        time.sleep(1)
+        start_time = time.time()
+        global l,r
+        
+        while time.time() - start_time < MAX_TIME:
+            mc.circle_left(0.2,0.2)  
+        print("done flying")
 
+
+def move_box_limit(scf):
+    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:        
+        mc.move_distance(0.2,0,0,velocity=0.5)
+        mc.turn_right(35)
+        mc.move_distance(0.2,0,0,velocity=0.2)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.2)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.2)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.2)
+        mc.turn_left(60)
+        mc.move_distance(0.5,0,0,velocity=0.2)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.2)
+        mc.turn_right(20)
+        mc.move_distance(0.2,0,0,velocity=0.2)
+        mc.turn_right(20)
+        mc.move_distance(0.7,0,0,velocity=0.2)
+        mc.turn_left(40)
+        mc.move_distance(0.4,0,0,velocity=0.2)
+        mc.turn_left(40)
+        mc.move_distance(0.6,0,0,velocity=0.2)
+        mc.turn_left(40)                
+        mc.move_distance(0.5,0,0,velocity=0.2)
+        mc.turn_left(40)
+        mc.move_distance(0.5,0,0,velocity=0.2)
+        mc.turn_left(75)
+        mc.move_distance(0.9,0,0,velocity=0.2)
 
 # img analyzer #
 def image_callback(image):
     global coords
-    
 
     preprocessed_image = path_finder.preprocess(image)
     
@@ -75,7 +167,17 @@ def image_callback(image):
     coords = path_finder.get_line_coords(preprocessed_image)
     
     # Further processing with coords
-    print(coords)
+    a,b = compute_steering_angle(coords)    
+    global calculated_angle 
+    global direction
+    calculated_angle = a
+    direction = b
+    global r,l
+    if(direction == 'right'):
+        r += 1
+    elif(direction == 'left'):
+        l += 1
+    print(f'Angle: {calculated_angle}, Direction: {direction}')
    
 
 if __name__ == "__main__":
@@ -118,7 +220,7 @@ if __name__ == "__main__":
                                          cb=param_deck_flow)
         time.sleep(1)
 
-        logconf = LogConfig(name='Position', period_in_ms=250)
+        logconf = LogConfig(name='Position', period_in_ms=2000)
         logconf.add_variable('stateEstimate.x', 'float')
         logconf.add_variable('stateEstimate.y', 'float')
         scf.cf.log.add_config(logconf)
@@ -132,26 +234,29 @@ if __name__ == "__main__":
     # -------------- #
 
 
-    start_time = time.time()
-    logconf.start()
-    move_to(scf)
+        start_time = time.time()
+        logconf.start()
+        #move_to(scf)
+        move_box_limit(scf)
+        #stationary(scf)
+        logconf.stop()
 
-    while time.time() - start_time < MAX_TIME:
-        img = image_receiver.pop()
-        if img is None:
-            print("no img")
-            time.sleep(0.5)
-            continue
-        else:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            print("Image received")
-            bottle_counter.count_bottles_stream(img)
+        
+        
+        img = image_receiver.pop() 
+        i = 0
+        while img is not None:
+                print("Image received")
+                print(i)
+                i += 1
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                bottle_counter.count_bottles_stream(img)
+                #save img
+                cv2.imwrite(f'./img_{i}.jpeg', img)
+                img = image_receiver.pop() 
+          
+        image_receiver.stop()
+        bottle_counter.get_bottle_counter()
 
-            bottle_counter.count_bottles_stream(cv2.cvtColor(img, cv2.COLOR_BRG2RGB))
-    running = False
-    logconf.stop()
-    image_receiver.stop()
-    bottle_counter.get_bottle_counter()
-
-    image_receiver_thread.join()
-    bottle_counter_thread.join()
+        image_receiver_thread.join()
+        bottle_counter_thread.join()
