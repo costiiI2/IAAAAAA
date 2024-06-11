@@ -1,8 +1,12 @@
 cvlib==0.2.7
 matplotlib==3.9.0
 numpy==1.26.4
+opencv_contrib_python==4.10.0.82
+opencv_contrib_python_headless==4.10.0.82
 opencv_python==4.10.0.82
 scipy==1.13.1
-skimage==0.0
 torch==2.3.1
 tqdm==4.66.4
+tensorflow==2.16.1
+scikit-image==0.23.2
+cflib==0.1.25.1
